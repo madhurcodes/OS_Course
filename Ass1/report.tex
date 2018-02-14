@@ -1,0 +1,21 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+
+\author{Madhur Singhal\\2015CS10235}
+
+\title{OS Assignment 1\\Process management and system calls}
+\date{February 2017}
+\begin{document}
+\maketitle
+\section{Introduction}
+Operating systems are designed to act as effecient managers of computing resources. They perform tasks like scheduling, file system management, device interaction, sandboxing and communication. Xv6 is a tiny operating system based on the Unix design methodology. In this assignment we study the xv6 source code to understand it's functioning and add some small bits of code to it to demonstrate our understanding. The main areas we are concerned with here is the system call pipeline and the process table.
+\section{System Call Tracing}
+The first task is to add a system call logging facility to the OS. This means that whenever a system call is executed, a line of output should be printed identifying the system call used and the number of times that particular system call has been utilized till now. We also add a new system call to tutn off/on this logging facility. For this task we add three data structures, an int array \textbf{numcalls} to store the number of times each system call has been invoked, a string array \textbf{strs} to store the name of the system call at a particular index and an int \textbf{trace\_on} to indicate whether logging is on or off at the moment.\\
+We add these structures to \textbf{syscall.c} and add three lines to print the system call whenever one is called in the same file. Further we add the new system call declarations in \textbf{usys.S}, \textbf{syscall.h} and \textbf{user.h}. We also add the toggle code to \textbf{sysproc.c} to modify the \textbf{trace\_on} variable in \textbf{syscall.c}. Finally we add a user program called \textbf{user\_toggle.c} whose only job is to call the toggle system call onceThe Makefile is also modified in the appropiate manner so that the new user program  and the assign files are linked properly. \\
+\section{sys\_add System Call}
+This is very easy, we follow the same methodology as the above one to create a new \textbf{sys\_add} system call. The main difference is inside \textbf{sysproc.c} where inside the code for the add system call we have to use the \textbf{argint} function twice to get the two numbers which were passed as parameters to the system call. Argint calls fetchint to read the value at that address from user memory and write it to the given integer pointers from where they can be used by the kernel to perform the system call. The declaration in \textbf{user.h} is also modified a bit to expect two integers as inputs.
+\section{sys\_ps System call}
+This is a bit tricky since the \textbf{sysproc.c} file does not have access to the process table. Thus to create this system call we modify the \textbf{procdump} method inside \textbf{proc.c}. We just go over the whole \textbf{ptable} and print all processes whose state is not \textbf{UNUSED},\textbf{EMBRYO} or \textbf{ZOMBIE}. The procesure to add the system call is identical, with modifications to \textbf{syscall.c}, \textbf{syscall.h},\textbf{usys.S}, \textbf{sysproc.c} and \textbf{user.h}. Here the \textbf{sys\_ps} function inside \textbf{sysproc.c} just calls the \textbf{procdump} function in \textbf{proc.c}
+\end{document}
+
