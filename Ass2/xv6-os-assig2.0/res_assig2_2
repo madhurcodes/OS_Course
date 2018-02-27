@@ -1,0 +1,3 @@
+pid:1 state:SLEEPING name:init priority:10
+pid:2 state:SLEEPING name:sh priority:5
+pid:4 state:RUNNING name:assig2_1 priority:5
