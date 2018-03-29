@@ -1,3 +1,3 @@
-$ pid:1 state:SLEEPING name:init priority:5
-pid:2 state:SLEEPING name:sh priority:5
-pid:3 state:RUNNING name:assig2_1 priority:5
+pid:1 name:init state:SLEEPING priority:5
+pid:2 name:sh state:SLEEPING priority:5
+pid:3 name:assig2_1 state:RUNNING priority:5

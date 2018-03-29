@@ -7,7 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 
-#define STARVATION_AVOIDANCE 0
+#define STARVATION_AVOIDANCE 1
 
 struct {
   struct spinlock lock;

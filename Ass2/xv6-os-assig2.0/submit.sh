@@ -11,6 +11,8 @@ cp sysproc.c $1
 cp proc.c $1
 cp usys.S $1
 cp user.h $1
+cp proc.h $1
+cp proc_3.c $1
 cp $2 $1
 tar -czvf $1.tar.gz $1
 echo "Submit $1.tar.gz on Moodle."

@@ -107,7 +107,7 @@ extern int sys_toggle(void);
 extern int sys_add(void);
 extern int sys_ps(void);
 extern int sys_setpriority(void);
-
+extern int sys_getpriority(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -135,6 +135,7 @@ static int (*syscalls[])(void) = {
 [SYS_add]   sys_add,
 [SYS_ps]   sys_ps,
 [SYS_setpriority]  sys_setpriority,
+[SYS_getpriority]  sys_getpriority,
 };
 char strs[NELEM(syscalls)+1][25] = {"","sys_fork",
 "sys_exit" ,
@@ -161,6 +162,7 @@ char strs[NELEM(syscalls)+1][25] = {"","sys_fork",
 "sys_add",
 "sys_ps",
 "sys_setpriority",
+"sys_getpriority",
 };
 
 int num_calls[NELEM(syscalls)+1];

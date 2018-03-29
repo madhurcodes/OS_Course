@@ -8,6 +8,15 @@
 #include "proc.h"
 
 extern int setpriority_internals(int,int);
+extern int getpriority_internals(int);
+
+int sys_getpriority(){
+  int pid;
+  if(argint(0, &pid) < 0)
+    return -1;
+  return getpriority_internals(pid);
+}
+
 int sys_setpriority(){
   int pid,priority;
   if(argint(0, &pid) < 0)

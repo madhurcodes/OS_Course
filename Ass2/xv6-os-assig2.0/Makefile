@@ -182,6 +182,8 @@ UPROGS=\
 	_assig2_1\
 	_assig2_2\
 	_assig2_3\
+	_assig2_4\
+        _assig2_test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
