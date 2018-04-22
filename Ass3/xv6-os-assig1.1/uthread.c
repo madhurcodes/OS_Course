@@ -6,6 +6,7 @@
 #define FREE        0x0
 #define RUNNING     0x1
 #define RUNNABLE    0x2
+#define WAITING     0x3
 
 #define STACK_SIZE  8192
 #define MAX_THREAD  4
@@ -17,7 +18,9 @@ struct thread {
   int        sp;                /* curent stack pointer */
   char stack[STACK_SIZE];       /* the thread's stack */
   int        state;             /* running, runnable, waiting */
-};
+  char *thr_name;
+  };
+
 static thread_t all_thread[MAX_THREAD];
 thread_p  current_thread;
 thread_p  next_thread;
@@ -60,19 +63,37 @@ thread_schedule(void)
     next_thread = 0;
 }
 
-void 
-thread_create(void (*func)())
+int
+thread_create( const char *thr_name, void (*func)())
 {
   thread_p t;
 
+  char * temp = (char *) malloc(100);
+  int  k = 0;
+  while(thr_name[k]!='\0'){
+    temp[k] = thr_name[k];
+    k++;
+  }
+  temp[k] = thr_name[k];
+
+  int is_free = 0;
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    if (t->state == FREE) break;
+    if (t->state == FREE){ 
+      is_free = 1;
+      break;
+    }
+  }
+  if(!is_free){
+    return 0;
   }
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
   * (int *) (t->sp) = (int)func;           // push return address on stack
   t->sp -= 32;                             // space for registers that thread_switch will push
   t->state = RUNNABLE;
+
+  t->thr_name = temp;
+  return 1;
 }
 
 void 
@@ -101,8 +122,8 @@ int
 main(int argc, char *argv[]) 
 {
   thread_init();
-  thread_create(mythread);
-  thread_create(mythread);
+  thread_create("go",mythread);
+  thread_create("d",mythread);
   thread_schedule();
   return 0;
 }

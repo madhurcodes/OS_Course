@@ -7,4 +7,5 @@
 	.globl thread_switch
 thread_switch:
 	/* YOUR CODE HERE */
+	
 	ret				/* pop return address from stack */
