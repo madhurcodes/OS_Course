@@ -25,18 +25,18 @@ static thread_t all_thread[MAX_THREAD];
 thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
-
+void thread_yield(void);
 
 
 struct spinlock_s {
   uint locked;       // Is the lock held?
-  char *name;        // Name of lock.
+  char *lock_name;        // Name of lock.
   thread_t *thr;   // The thread holding the lock.
 };
 
 typedef struct spinlock_s spinlock;
 
-int init_lock(spinlock *lk, char *lock_name){
+void init_lock(spinlock *lk, char *lock_name){
 
     char * temp = (char *) malloc(100);
     int  k = 0;
@@ -46,18 +46,40 @@ int init_lock(spinlock *lk, char *lock_name){
     }
     temp[k] = lock_name[k];
 
-    lk->name = temp;
+    lk->lock_name = temp;
     lk->locked = 0;
-    lk->thr = current_thread;
+    lk->thr = 0;
 }
-int lock_busy_wait_acquire(spinlock *lk){
+
+void lock_busy_wait_acquire(spinlock *lk){
+
+  while((lk->locked) && (lk->thr!=current_thread))
+  {
+    // if((lk->locked) && (lk->thr!=current_thread)){
+      thread_yield();    
+  }
+
+  lk->locked = 1;
+  lk->thr = current_thread;
+}
+void lock_non_busy_wait_acquire(spinlock *lk){
+
+    while((lk->locked) && (lk->thr!=current_thread))
+  {
+      current_thread->state = WAITING;
+      thread_yield();    
+  }
+
+  lk->locked = 1;
+  lk->thr = current_thread;
 
 }
-int lock_non_busy_wait(spinlock *lk){
 
-}
-int lock_release(spinlock *lk){
-
+void lock_release(spinlock *lk){
+  if((lk->locked) && (lk->thr==current_thread)){
+    lk->locked = 0;
+    lk->thr = 0; // okay?
+  }
 }
 
 
@@ -68,6 +90,15 @@ thread_init(void)
   current_thread = &all_thread[0];
   current_thread->state = RUNNING;
 }
+static void clear_one_waiting_thread(void){
+  thread_p t;
+  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    if (t->state == WAITING && t != current_thread) {
+      t->state = RUNNABLE;
+      break;
+    }
+  }
+}
 
 static void 
 thread_schedule(void)
@@ -75,6 +106,18 @@ thread_schedule(void)
   thread_p t;
   // printf(2, "Entering Thread scheduler\n");
   /* Find another runnable thread. */
+  clear_one_waiting_thread();
+
+  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+    if (t->state == RUNNABLE && t != current_thread) {
+      next_thread = t;
+        // if (next_thread == 0) {
+        // printf(2, "is 0 still\n");
+        // }
+      break;
+    }
+  }
+
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
@@ -153,29 +196,50 @@ thread_yield(void)
   thread_schedule();
 }
 
+// static void 
+// test_part_one(void)
+// {
+//   int i;
+//   printf(1, "my thread running\n");
+//   for (i = 0; i < 100; i++) {
+//     printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
+//     thread_yield();
+//   }
+//   printf(1, "my thread: exit\n");
+//   current_thread->state = FREE;
+//   thread_schedule();
+// }
+
+int shared = 0;
+spinlock myl;
+
 static void 
-mythread(void)
-{
+test_part_two(void){
+  lock_busy_wait_acquire(&myl);
   int i;
-  printf(1, "my thread running\n");
-  for (i = 0; i < 100; i++) {
-    printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
+  for (i = 0; i < 10; i++) {
+    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
+    printf(1,"%s is holding lock\n",myl.thr->thr_name);
+    shared++;
     thread_yield();
   }
+  lock_release(&myl);
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
   thread_schedule();
+
 }
+
 
 
 int 
 main(int argc, char *argv[]) 
 {
   thread_init();
-  
-  thread_create("go",mythread);
-  thread_create("fun",mythread);
-  thread_create("donk",mythread);  
+  init_lock(&myl,"l11");
+  thread_create("fff",test_part_two);
+  thread_create("fun",test_part_two);
+  thread_create("donk",test_part_two);  
   thread_schedule();
   printf(1, "Exiting Program\n");  
   exit();
