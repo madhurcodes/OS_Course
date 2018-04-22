@@ -11,6 +11,9 @@
 #define STACK_SIZE  8192
 #define MAX_THREAD  8
 
+
+#define PRIORITY_SCHEDULE 1
+
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
 
