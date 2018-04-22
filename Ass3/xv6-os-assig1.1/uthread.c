@@ -9,7 +9,7 @@
 #define WAITING     0x3
 
 #define STACK_SIZE  8192
-#define MAX_THREAD  4
+#define MAX_THREAD  8
 
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
@@ -37,11 +37,14 @@ static void
 thread_schedule(void)
 {
   thread_p t;
-
+  printf(2, "Entering Thread scheduler\n");
   /* Find another runnable thread. */
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
+        // if (next_thread == 0) {
+        // printf(2, "is 0 still\n");
+        // }
       break;
     }
   }
@@ -49,6 +52,7 @@ thread_schedule(void)
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
     /* The current thread is the only runnable thread; run it. */
     next_thread = current_thread;
+    printf(2, "Current thread is the only runnable thread\n");
   }
 
   if (next_thread == 0) {
@@ -58,9 +62,17 @@ thread_schedule(void)
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
+
+    // current_thread->state = RUNNABLE;
+    printf(2, "Starting Switch\n");
     thread_switch();
-  } else
+    printf(2, "Exiting Switch\n");    
+  } 
+  else
+  {
     next_thread = 0;
+  }
+  printf(2, "Exiting Thread scheduler\n");
 }
 
 int
@@ -69,6 +81,7 @@ thread_create( const char *thr_name, void (*func)())
   thread_p t;
 
   char * temp = (char *) malloc(100);
+  // Allocate some space for thread name in heap and store pointer to it in thread
   int  k = 0;
   while(thr_name[k]!='\0'){
     temp[k] = thr_name[k];
@@ -86,6 +99,7 @@ thread_create( const char *thr_name, void (*func)())
   if(!is_free){
     return 0;
   }
+
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
   * (int *) (t->sp) = (int)func;           // push return address on stack
@@ -100,6 +114,7 @@ void
 thread_yield(void)
 {
   current_thread->state = RUNNABLE;
+  printf(1, "Yielded \n");
   thread_schedule();
 }
 
@@ -122,8 +137,11 @@ int
 main(int argc, char *argv[]) 
 {
   thread_init();
+  
   thread_create("go",mythread);
   thread_create("d",mythread);
+  thread_create("donk",mythread);  
   thread_schedule();
-  return 0;
+  printf(1, "Exiting Program\n");  
+  exit();
 }

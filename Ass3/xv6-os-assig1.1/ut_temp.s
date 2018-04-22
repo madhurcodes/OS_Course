@@ -6,12 +6,26 @@
  */
 	.globl thread_switch
 thread_switch:
+
 	movl current_thread,%eax
-	pushal
 	movl %esp,(%eax)
+
+	movl %eax, %esp
+	addl $(8192),%esp 
+	pushal
 	movl next_thread,%eax
 	movl %eax,current_thread
-	movl (%eax),%esp 
+	 movl current_thread,%esp 
+	addl $8160,%esp  
+/*	 (4+8192-4-32)  */
 	popal
+
+	movl current_thread,%eax
+	movl (%eax),%esp
+
+    movl current_thread,%eax 
+	addl $8196,%eax
+    push %eax
+
 	movl $0, next_thread
 	ret				/* pop return address from stack */
