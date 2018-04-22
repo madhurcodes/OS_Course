@@ -26,6 +26,42 @@ thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
 
+
+
+struct spinlock_s {
+  uint locked;       // Is the lock held?
+  char *name;        // Name of lock.
+  thread_t *thr;   // The thread holding the lock.
+};
+
+typedef struct spinlock_s spinlock;
+
+int init_lock(spinlock *lk, char *lock_name){
+
+    char * temp = (char *) malloc(100);
+    int  k = 0;
+    while(lock_name[k]!='\0'){
+      temp[k] = lock_name[k];
+      k++;
+    }
+    temp[k] = lock_name[k];
+
+    lk->name = temp;
+    lk->locked = 0;
+    lk->thr = current_thread;
+}
+int lock_busy_wait_acquire(spinlock *lk){
+
+}
+int lock_non_busy_wait(spinlock *lk){
+
+}
+int lock_release(spinlock *lk){
+
+}
+
+
+
 void 
 thread_init(void)
 {
@@ -37,7 +73,7 @@ static void
 thread_schedule(void)
 {
   thread_p t;
-  printf(2, "Entering Thread scheduler\n");
+  // printf(2, "Entering Thread scheduler\n");
   /* Find another runnable thread. */
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
@@ -62,17 +98,16 @@ thread_schedule(void)
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
-
-    // current_thread->state = RUNNABLE;
-    printf(2, "Starting Switch\n");
+    
+    // printf(2, "Starting Switch\n");
     thread_switch();
-    printf(2, "Exiting Switch\n");    
+    // printf(2, "Exiting Switch\n");    
   } 
   else
   {
     next_thread = 0;
   }
-  printf(2, "Exiting Thread scheduler\n");
+  // printf(2, "Exiting Thread scheduler\n");
 }
 
 int
@@ -124,7 +159,7 @@ mythread(void)
   int i;
   printf(1, "my thread running\n");
   for (i = 0; i < 100; i++) {
-    printf(1, "my thread 0x%x\n", (int) current_thread);
+    printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
     thread_yield();
   }
   printf(1, "my thread: exit\n");
@@ -139,7 +174,7 @@ main(int argc, char *argv[])
   thread_init();
   
   thread_create("go",mythread);
-  thread_create("d",mythread);
+  thread_create("fun",mythread);
   thread_create("donk",mythread);  
   thread_schedule();
   printf(1, "Exiting Program\n");  
