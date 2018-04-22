@@ -19,6 +19,7 @@ struct thread {
   char stack[STACK_SIZE];       /* the thread's stack */
   int        state;             /* running, runnable, waiting */
   char *thr_name;
+  int priority;
   };
 
 static thread_t all_thread[MAX_THREAD];
@@ -90,6 +91,7 @@ thread_init(void)
   current_thread = &all_thread[0];
   current_thread->state = RUNNING;
 }
+
 static void clear_one_waiting_thread(void){
   thread_p t;
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
@@ -154,7 +156,7 @@ thread_schedule(void)
 }
 
 int
-thread_create( const char *thr_name, void (*func)())
+thread_create( const char *thr_name, void (*func)(),int priority)
 {
   thread_p t;
 
@@ -183,7 +185,7 @@ thread_create( const char *thr_name, void (*func)())
   * (int *) (t->sp) = (int)func;           // push return address on stack
   t->sp -= 32;                             // space for registers that thread_switch will push
   t->state = RUNNABLE;
-
+  t->priority = priority;
   t->thr_name = temp;
   return 1;
 }
@@ -229,8 +231,6 @@ test_part_two(void){
   thread_schedule();
 
 }
-
-
 
 int 
 main(int argc, char *argv[]) 
