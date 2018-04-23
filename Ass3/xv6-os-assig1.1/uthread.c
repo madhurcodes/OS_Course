@@ -11,7 +11,8 @@
 #define STACK_SIZE  8192
 #define MAX_THREAD  8
 
-
+#define COUNTER_LIM       30
+#define PRIORITY_LIM      10  
 #define PRIORITY_SCHEDULE 1
 
 typedef struct thread thread_t, *thread_p;
@@ -22,7 +23,8 @@ struct thread {
   char stack[STACK_SIZE];       /* the thread's stack */
   int        state;             /* running, runnable, waiting */
   char *thr_name;
-  int priority;
+  int priority;                 /* Thresholded at a Limit */
+  int counter;                  /* counter indicating number of misses the process undergoes */
   };
 
 static thread_t all_thread[MAX_THREAD];
@@ -105,33 +107,22 @@ static void clear_one_waiting_thread(void){
   }
 }
 
+/*Default Thread Scheduler*/
+/****************************************************************/
 static void 
 thread_schedule(void)
 {
   thread_p t;
-  // printf(2, "Entering Thread scheduler\n");
   /* Find another runnable thread. */
   clear_one_waiting_thread();
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
       next_thread = t;
-        // if (next_thread == 0) {
-        // printf(2, "is 0 still\n");
-        // }
       break;
     }
   }
 
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    if (t->state == RUNNABLE && t != current_thread) {
-      next_thread = t;
-        // if (next_thread == 0) {
-        // printf(2, "is 0 still\n");
-        // }
-      break;
-    }
-  }
 
   if (t >= all_thread + MAX_THREAD && current_thread->state == RUNNABLE) {
     /* The current thread is the only runnable thread; run it. */
@@ -155,8 +146,81 @@ thread_schedule(void)
   {
     next_thread = 0;
   }
-  // printf(2, "Exiting Thread scheduler\n");
 }
+
+/* Aging */
+/****************************************************************/
+static void
+AGING(void)
+{
+  thread_p temp;
+  for(temp=all_thread;temp<all_thread+MAX_THREAD;temp++)
+  {
+    if(temp->state==RUNNABLE && temp!=next_thread)
+    {
+      temp->counter=temp->counter+1;
+      if(temp->counter==(COUNTER_LIM))
+      {
+        temp->counter=0;
+        if(temp->priority<(PRIORITY_LIM))
+          temp->priority=temp->priority+1;
+      }
+    }
+  }
+}
+
+/* Priority Based Thread Scheduler */
+/****************************************************************/
+static void 
+thread_schedule_priority(void)
+{
+  static thread_p t=all_thread;
+
+  clear_one_waiting_thread();
+  t++;
+
+  thread_p temp=NULL;
+
+  /* Find runnable thread with Maximum Priority. */
+  for (; t < all_thread + MAX_THREAD; t++) {
+    if (t->state == RUNNABLE) {
+      if(temp==NULL)
+        temp=t;
+      else if(t->priority > temp->priority)
+        temp=t;
+    }
+  }
+
+  for (t=all_thread;t<=current_thread;t++)
+  {
+    if (t->state == RUNNABLE) {
+      if(temp==NULL)
+        temp=t;
+      else if(t->priority > temp->priority)
+        temp=t;
+    }
+  }
+
+  /*Move loop pointer to next thread*/
+  t=temp;
+
+
+  if(temp!=NULL)
+  {
+    next_thread=temp;
+    next_thread->state=RUNNING;
+
+    AGING();
+    thread_switch();
+  }
+
+  else
+  {
+    printf(2, "thread_schedule: no runnable threads; deadlock\n");
+    exit();    
+  }
+}
+
 
 int
 thread_create( const char *thr_name, void (*func)(),int priority)
@@ -190,6 +254,7 @@ thread_create( const char *thr_name, void (*func)(),int priority)
   t->state = RUNNABLE;
   t->priority = priority;
   t->thr_name = temp;
+  t->counter = 0;
   return 1;
 }
 
@@ -240,9 +305,9 @@ main(int argc, char *argv[])
 {
   thread_init();
   init_lock(&myl,"l11");
-  thread_create("fff",test_part_two);
-  thread_create("fun",test_part_two);
-  thread_create("donk",test_part_two);  
+  thread_create("fff",test_part_two,1);
+  thread_create("fun",test_part_two,1);
+  thread_create("donk",test_part_two,1);  
   thread_schedule();
   printf(1, "Exiting Program\n");  
   exit();
