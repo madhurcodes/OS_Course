@@ -15,6 +15,8 @@
 #define PRIORITY_LIM      10  
 #define PRIORITY_SCHEDULE 1
 
+#define NULL 0
+
 typedef struct thread thread_t, *thread_p;
 typedef struct mutex mutex_t, *mutex_p;
 
@@ -32,7 +34,10 @@ thread_p  current_thread;
 thread_p  next_thread;
 extern void thread_switch(void);
 void thread_yield(void);
+static void  thread_schedule_priority(void);
+static void  thread_schedule(void);
 
+static void (*thread_schedule_current)(void);
 
 struct spinlock_s {
   uint locked;       // Is the lock held?
@@ -65,7 +70,7 @@ void init_lock(spinlock *lk, char *lock_name){
     lk->locked = 0;
     lk->thr = 0;
     for(int i=0;i<MAX_THREAD;i++)
-      waiting_threads[i]=NULL;
+      lk->waiting_threads[i]=NULL;
 }
 
 void lock_busy_wait_acquire(spinlock *lk){
@@ -89,13 +94,13 @@ void lock_non_busy_wait_acquire(spinlock *lk){
       {
         for(int i=0;i<MAX_THREAD;i++)
         {
-          if(waiting_threads[i]==NULL)
+          if(lk->waiting_threads[i]==NULL)
           {
             pos=i;
             break;
           }
         }
-        waiting_threads[pos]=current_thread;
+        lk->waiting_threads[pos]=current_thread;
       }
       thread_yield();    
   }
@@ -103,8 +108,8 @@ void lock_non_busy_wait_acquire(spinlock *lk){
   lk->locked = 1;
   for(int i=0;i<MAX_THREAD;i++)
   {
-    if(waiting_threads[i]==current_thread)
-      waiting_threads[i]=NULL;
+    if(lk->waiting_threads[i]==current_thread)
+      lk->waiting_threads[i]=NULL;
   }
   lk->thr = current_thread;
 
@@ -210,7 +215,7 @@ AGING(void)
 static void 
 thread_schedule_priority(void)
 {
-  static thread_p t=all_thread;
+  thread_p t=current_thread;
   /* It was declared static which helps ensure RoundRobin nature in cases of ties */ 
  
   clear_one_waiting_thread();
@@ -239,7 +244,7 @@ thread_schedule_priority(void)
   }
 
   /*Move loop pointer to next thread*/
-  t=temp;
+  // t=temp;
 
 
   if(temp!=NULL)
@@ -260,7 +265,7 @@ thread_schedule_priority(void)
 
 
 int
-thread_create( const char *thr_name, void (*func)(),int priority)
+thread_create(char *thr_name, void (*func)(),int priority)
 {
   thread_p t;
 
@@ -300,7 +305,8 @@ thread_yield(void)
 {
   current_thread->state = RUNNABLE;
   printf(1, "Yielded \n");
-  thread_schedule();
+
+  (*thread_schedule_current)();
 }
 
 // static void 
@@ -314,7 +320,7 @@ thread_yield(void)
 //   }
 //   printf(1, "my thread: exit\n");
 //   current_thread->state = FREE;
-//   thread_schedule();
+//   (*thread_schedule_current)();
 // }
 
 int shared = 0;
@@ -322,7 +328,7 @@ spinlock myl;
 
 static void 
 test_part_two(void){
-  lock_busy_wait_acquire(&myl);
+  // lock_busy_wait_acquire(&myl);
   int i;
   for (i = 0; i < 10; i++) {
     printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
@@ -330,10 +336,10 @@ test_part_two(void){
     shared++;
     thread_yield();
   }
-  lock_release(&myl);
+  // lock_release(&myl);
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
-  thread_schedule();
+  (*thread_schedule_current)();
 
 }
 
@@ -341,11 +347,17 @@ int
 main(int argc, char *argv[]) 
 {
   thread_init();
+  if (PRIORITY_SCHEDULE){
+    thread_schedule_current = &thread_schedule_priority;
+  }
+  else{
+    thread_schedule_current = &thread_schedule;
+  }
   init_lock(&myl,"l11");
   thread_create("fff",test_part_two,1);
   thread_create("fun",test_part_two,1);
-  thread_create("donk",test_part_two,1);  
-  thread_schedule();
+  thread_create("donk",test_part_two,10);  
+  (*thread_schedule_current)();
   printf(1, "Exiting Program\n");  
   exit();
 }
