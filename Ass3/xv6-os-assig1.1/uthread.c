@@ -38,13 +38,22 @@ struct spinlock_s {
   uint locked;       // Is the lock held?
   char *lock_name;        // Name of lock.
   thread_t *thr;   // The thread holding the lock.
+  thread_p waiting_threads[MAX_THREAD];
 };
 
 typedef struct spinlock_s spinlock;
 
+int getLength(char *a)
+{
+  int len=0;
+  while(a[len]!='\0')
+    len++;
+  return len;
+}
+
 void init_lock(spinlock *lk, char *lock_name){
 
-    char * temp = (char *) malloc(100);
+    char * temp = (char *) malloc(getLength(lock_name)+1);
     int  k = 0;
     while(lock_name[k]!='\0'){
       temp[k] = lock_name[k];
@@ -55,6 +64,8 @@ void init_lock(spinlock *lk, char *lock_name){
     lk->lock_name = temp;
     lk->locked = 0;
     lk->thr = 0;
+    for(int i=0;i<MAX_THREAD;i++)
+      waiting_threads[i]=NULL;
 }
 
 void lock_busy_wait_acquire(spinlock *lk){
@@ -69,14 +80,32 @@ void lock_busy_wait_acquire(spinlock *lk){
   lk->thr = current_thread;
 }
 void lock_non_busy_wait_acquire(spinlock *lk){
+  int pos=-1;
 
-    while((lk->locked) && (lk->thr!=current_thread))
+  while((lk->locked) && (lk->thr!=current_thread))
   {
       current_thread->state = WAITING;
+      if(pos==-1)
+      {
+        for(int i=0;i<MAX_THREAD;i++)
+        {
+          if(waiting_threads[i]==NULL)
+          {
+            pos=i;
+            break;
+          }
+        }
+        waiting_threads[pos]=current_thread;
+      }
       thread_yield();    
   }
 
   lk->locked = 1;
+  for(int i=0;i<MAX_THREAD;i++)
+  {
+    if(waiting_threads[i]==current_thread)
+      waiting_threads[i]=NULL;
+  }
   lk->thr = current_thread;
 
 }
@@ -84,6 +113,13 @@ void lock_non_busy_wait_acquire(spinlock *lk){
 void lock_release(spinlock *lk){
   if((lk->locked) && (lk->thr==current_thread)){
     lk->locked = 0;
+    for(int i=0;i<MAX_THREAD;i++)
+    {
+      if(lk->waiting_threads[i]==NULL)
+        continue;
+      (lk->waiting_threads[i])->state=RUNNABLE;
+      lk->waiting_threads[i]=NULL;
+    }
     lk->thr = 0; // okay?
   }
 }
@@ -175,7 +211,8 @@ static void
 thread_schedule_priority(void)
 {
   static thread_p t=all_thread;
-
+  /* It was declared static which helps ensure RoundRobin nature in cases of ties */ 
+ 
   clear_one_waiting_thread();
   t++;
 
@@ -227,7 +264,7 @@ thread_create( const char *thr_name, void (*func)(),int priority)
 {
   thread_p t;
 
-  char * temp = (char *) malloc(100);
+  char * temp = (char *) malloc(getLength(thr_name)+1);
   // Allocate some space for thread name in heap and store pointer to it in thread
   int  k = 0;
   while(thr_name[k]!='\0'){
