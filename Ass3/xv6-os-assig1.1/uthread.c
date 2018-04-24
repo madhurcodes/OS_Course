@@ -14,6 +14,7 @@
 #define COUNTER_LIM       30
 #define PRIORITY_LIM      10  
 #define PRIORITY_SCHEDULE 1
+
 #define PRIORITY_INVERSION 1
 #define BUSY_WAITING 0
 
@@ -51,14 +52,15 @@ typedef struct spinlock_s spinlock;
 extern void thread_switch(void);
 void thread_yield(void);
 static void  thread_schedule_priority(void);
-static void  thread_schedule(void);
+static void  thread_schedule_normal(void);
 static void lock_non_busy_wait_acquire(spinlock *lk);
 static void lock_non_busy_wait_acquire_donation(spinlock *lk);
 static void lock_busy_wait_acquire(spinlock *lk);
 
 
 static void (*lock_acquire)(spinlock *lk);
-static void (*thread_schedule_current)(void);
+static void (*thread_schedule)(void);
+static void (*test)(void);
 
 int getLength(char *a)
 {
@@ -231,7 +233,7 @@ static void clear_one_waiting_thread(void){
 /*Default Thread Scheduler*/
 /****************************************************************/
 static void 
-thread_schedule(void)
+thread_schedule_normal(void)
 {
   thread_p t;
   /* Find another runnable thread. */
@@ -306,20 +308,24 @@ thread_schedule_priority(void)
   /* Find runnable thread with Maximum Priority. */
   for (; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE) {
-      if(temp==NULL)
+      if(temp==NULL){
         temp=t;
-      else if(t->priority > temp->priority)
+      }
+      else if(t->priority > temp->priority){
         temp=t;
+      }
     }
   }
 
   for (t=all_thread;t<=current_thread;t++)
   {
     if (t->state == RUNNABLE) {
-      if(temp==NULL)
+      if(temp==NULL){
         temp=t;
-      else if(t->priority > temp->priority)
+      }
+      else if(t->priority > temp->priority){
         temp=t;
+      }
     }
   }
 
@@ -331,6 +337,7 @@ thread_schedule_priority(void)
   {
     next_thread=temp;
     next_thread->state=RUNNING;
+    next_thread->counter = 0;
 
     AGING();
     thread_switch();
@@ -391,7 +398,7 @@ thread_yield(void)
   current_thread->state = RUNNABLE;
   printf(1, "Yielded \n");
 
-  (*thread_schedule_current)();
+  (*thread_schedule)();
 }
 
 // static void 
@@ -412,7 +419,7 @@ int shared = 0;
 spinlock myl;
 
 static void 
-test_part_two(void){
+test_part_two_internals(void){
   (*lock_acquire)(&myl);
   int i;
   for (i = 0; i < 10; i++) {
@@ -424,19 +431,45 @@ test_part_two(void){
   lock_release(&myl);
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
-  (*thread_schedule_current)();
-
+  (*thread_schedule)();
 }
+static void 
+test_part_two(void){
+  init_lock(&myl,"l11");
+  thread_create("fff",test_part_two_internals,1);
+  thread_create("fun",test_part_two_internals,1);
+  thread_create("donk",test_part_two_internals,10);  
+  (*thread_schedule)();
+}
+
+static void 
+test_starvation_and_aging_internals(void){
+    int i =0;
+    for(i=0;i<90;i++){
+      printf(1, "my thread name is %s, and priority is %d\n", current_thread->thr_name,current_thread->priority);
+      thread_yield();
+    }
+      printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+static void 
+test_starvation_and_aging(void){
+  thread_create("low_prior",test_starvation_and_aging_internals,2);
+  thread_create("high_priority",test_starvation_and_aging_internals,4);  
+  (*thread_schedule)();
+}
+
 
 int 
 main(int argc, char *argv[]) 
 {
-  thread_init();
   if (PRIORITY_SCHEDULE){
-    thread_schedule_current = &thread_schedule_priority;
+    thread_schedule = &thread_schedule_priority;
   }
   else{
-    thread_schedule_current = &thread_schedule;
+    thread_schedule = &thread_schedule_normal;
   }
   if(BUSY_WAITING){
     lock_acquire = &lock_busy_wait_acquire;
@@ -447,11 +480,11 @@ main(int argc, char *argv[])
   else{
     lock_acquire = &lock_non_busy_wait_acquire;
   }
-  init_lock(&myl,"l11");
-  thread_create("fff",test_part_two,1);
-  thread_create("fun",test_part_two,1);
-  thread_create("donk",test_part_two,10);  
-  (*thread_schedule_current)();
+  test = &test_part_two;
+  test = &test_starvation_and_aging;
+  thread_init();
+  // sads
+  (*test)();
   printf(1, "Exiting Program\n");  
   exit();
 }
