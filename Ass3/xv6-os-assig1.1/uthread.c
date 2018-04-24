@@ -343,22 +343,33 @@ thread_yield(void)
   (*thread_schedule)();
 }
 
-// static void 
-// test_part_one(void)
-// {
-//   int i;
-//   printf(1, "my thread running\n");
-//   for (i = 0; i < 100; i++) {
-//     printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
-//     thread_yield();
-//   }
-//   printf(1, "my thread: exit\n");
-//   current_thread->state = FREE;
-//   (*thread_schedule_current)();
-// }
-
+/* Testing */
+/***********************************************************/
 int shared = 0;
 spinlock myl;
+
+static void 
+test_part_one_internals(void)
+{
+  int i;
+  printf(1, "my thread running\n");
+  for (i = 0; i < 100; i++) {
+    printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
+    thread_yield();
+  }
+  printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+static void 
+test_part_one(void){
+  thread_create("fff",test_part_one_internals,1);
+  thread_create("fun",test_part_one_internals,1);
+  thread_create("donk",test_part_one_internals,1);  
+  (*thread_schedule)();
+}
+
 
 static void 
 test_part_two_internals(void){
@@ -403,6 +414,45 @@ test_starvation_and_aging(void){
   (*thread_schedule)();
 }
 
+static void 
+simple_prod(void){
+  (*lock_acquire)(&myl);
+  int i;
+  for (i = 0; i < 10; i++) {
+    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
+    printf(1,"%s is holding lock\n",myl.thr->thr_name);
+    shared*=2;
+    thread_yield();
+  }
+  lock_release(&myl);
+  printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+static void 
+simple_sum(void){
+  (*lock_acquire)(&myl);
+  thread_create("high_prior",simple_prod,5);  
+  int i;
+  for (i = 0; i < 10; i++) {
+    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
+    printf(1,"%s is holding lock\n",myl.thr->thr_name);
+    shared++;
+    thread_yield();
+  }
+  lock_release(&myl);
+  printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+static void 
+test_priority_inv_problem(void){
+  init_lock(&myl,"l11");
+  thread_create("low_prior",simple_sum,2);
+  (*thread_schedule)();
+}
 
 int 
 main(int argc, char *argv[]) 
@@ -422,10 +472,12 @@ main(int argc, char *argv[])
   else{
     lock_acquire = &lock_non_busy_wait_acquire;
   }
+  test = &test_part_one;
   test = &test_part_two;
   test = &test_starvation_and_aging;
+  test = &test_priority_inv_problem;
+
   thread_init();
-  // sads
   (*test)();
   printf(1, "Exiting Program\n");  
   exit();
