@@ -59,7 +59,7 @@ void lock_non_busy_wait_acquire(spinlock *lk){
         }
         lk->waiting_threads[pos]=current_thread;
       }
-      thread_yield();    
+      (*thread_schedule)();    
   }
 
   lk->locked = 1;
@@ -69,7 +69,6 @@ void lock_non_busy_wait_acquire(spinlock *lk){
       lk->waiting_threads[i]=NULL;
   }
   lk->thr = current_thread;
-
 }
 
 void lock_non_busy_wait_acquire_donation(spinlock *lk){
@@ -109,12 +108,12 @@ void lock_non_busy_wait_acquire_donation(spinlock *lk){
           {
             lk->thr->donating_thread[i]=current_thread;
             lk->thr->recieved_priority[i]=final_donation;
+            break;
           }
         }
         
       }
-
-      thread_yield();
+      (*thread_schedule)();
   }
 
   lk->locked = 1;
@@ -124,10 +123,10 @@ void lock_non_busy_wait_acquire_donation(spinlock *lk){
       lk->waiting_threads[i]=NULL;
   }
   lk->thr = current_thread;
-
 }
 
 void lock_release(spinlock *lk){
+
   if((lk->locked) && (lk->thr==current_thread)){
     lk->locked = 0;
     int i = 0;
@@ -162,15 +161,15 @@ thread_init(void)
   current_thread->state = RUNNING;
 }
 
-static void clear_one_waiting_thread(void){
-  thread_p t;
-  for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
-    if (t->state == WAITING && t != current_thread) {
-      t->state = RUNNABLE;
-      break;
-    }
-  }
-}
+// static void clear_one_waiting_thread(void){
+//   thread_p t;
+//   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+//     if (t->state == WAITING && t != current_thread) {
+//       t->state = RUNNABLE;
+//       break;
+//     }
+//   }
+// }
 
 /*Default Thread Scheduler*/
 /****************************************************************/
@@ -179,7 +178,6 @@ thread_schedule_normal(void)
 {
   thread_p t;
   /* Find another runnable thread. */
-  clear_one_waiting_thread();
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
@@ -242,7 +240,7 @@ thread_schedule_priority(void)
   thread_p t=current_thread;
   /* It was declared static which helps ensure RoundRobin nature in cases of ties */ 
  
-  clear_one_waiting_thread();
+  // clear_one_waiting_thread();
   t++;
 
   thread_p temp=NULL;
@@ -277,6 +275,8 @@ thread_schedule_priority(void)
 
   if(temp!=NULL)
   {
+    // printf(1,"%d State\n",temp->state );
+    // printf(1,"Scheduled %s Priority %d\n",temp->thr_name,temp->priority );
     next_thread=temp;
     next_thread->state=RUNNING;
     next_thread->counter = 0;
@@ -338,7 +338,7 @@ void
 thread_yield(void)
 {
   current_thread->state = RUNNABLE;
-  printf(1, "Yielded \n");
+  // printf(1, "Yielded \n");
 
   (*thread_schedule)();
 }
@@ -354,7 +354,7 @@ test_part_one_internals(void)
   int i;
   printf(1, "my thread running\n");
   for (i = 0; i < 100; i++) {
-    printf(1, "my thread 0x%x, name is %s\n", (int) current_thread, current_thread->thr_name);
+    printf(1, "my thread 0x%x, name is %s priority %d\n", (int) current_thread, current_thread->thr_name,current_thread->priority);
     thread_yield();
   }
   printf(1, "my thread: exit\n");
@@ -376,8 +376,8 @@ test_part_two_internals(void){
   (*lock_acquire)(&myl);
   int i;
   for (i = 0; i < 10; i++) {
-    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
-    printf(1,"%s is holding lock\n",myl.thr->thr_name);
+    printf(1, "my thread 0x%x, name is %s, and s is %d, priority %d\n", (int) current_thread, current_thread->thr_name,shared,current_thread->priority);
+    // printf(1,"%s is holding lock\n",myl.thr->thr_name);
     shared++;
     thread_yield();
   }
@@ -415,11 +415,24 @@ test_starvation_and_aging(void){
 }
 
 static void 
+simple_pass(void){
+  int i;
+  for (i = 0; i < 10; i++) {
+    printf(1, "my thread 0x%x, name is %s, and s is %d priority %d\n", (int) current_thread, current_thread->thr_name,shared,current_thread->priority);
+    thread_yield();
+  }
+  printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+
+static void 
 simple_prod(void){
   (*lock_acquire)(&myl);
   int i;
   for (i = 0; i < 10; i++) {
-    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
+    printf(1, "my thread 0x%x, name is %s, and s is %d priority %d\n", (int) current_thread, current_thread->thr_name,shared,current_thread->priority);
     printf(1,"%s is holding lock\n",myl.thr->thr_name);
     shared*=2;
     thread_yield();
@@ -433,10 +446,10 @@ simple_prod(void){
 static void 
 simple_sum(void){
   (*lock_acquire)(&myl);
-  thread_create("high_prior",simple_prod,5);  
+  thread_create("high_prior",simple_prod,8);  
   int i;
   for (i = 0; i < 10; i++) {
-    printf(1, "my thread 0x%x, name is %s, and s is %d\n", (int) current_thread, current_thread->thr_name,shared);
+    printf(1, "my thread 0x%x, name is %s, and s is %d priority %d\n", (int) current_thread, current_thread->thr_name,shared,current_thread->priority);
     printf(1,"%s is holding lock\n",myl.thr->thr_name);
     shared++;
     thread_yield();
@@ -451,6 +464,33 @@ static void
 test_priority_inv_problem(void){
   init_lock(&myl,"l11");
   thread_create("low_prior",simple_sum,2);
+  (*thread_schedule)();
+}
+
+static void 
+simple_sum2(void){
+  (*lock_acquire)(&myl);
+  thread_create("mid_prior",simple_pass,5);
+  thread_create("high_prior",simple_prod,10);  
+  int i;
+  for (i = 0; i < 10; i++) {
+    printf(1, "my thread 0x%x, name is %s, and s is %d priority %d\n", (int) current_thread, current_thread->thr_name,shared,current_thread->priority);
+    printf(1,"%s is holding lock\n",myl.thr->thr_name);
+    shared++;
+    thread_yield();
+  }
+  lock_release(&myl);
+  printf(1, "my thread: exit\n");
+  current_thread->state = FREE;
+  (*thread_schedule)();
+}
+
+
+static void 
+test_priority_inv_problem_resolution(void){
+  init_lock(&myl,"l11");
+  thread_create("low_prior",simple_sum2,2);
+  // thread_create("medium_prior",simple_pass,5);
   (*thread_schedule)();
 }
 
@@ -470,12 +510,14 @@ main(int argc, char *argv[])
     lock_acquire = &lock_non_busy_wait_acquire_donation;    
   }
   else{
+    // printf(1,"His\n");
     lock_acquire = &lock_non_busy_wait_acquire;
   }
   test = &test_part_one;
   test = &test_part_two;
   test = &test_starvation_and_aging;
   test = &test_priority_inv_problem;
+  test = &test_priority_inv_problem_resolution;
 
   thread_init();
   (*test)();

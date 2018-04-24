@@ -18,7 +18,7 @@
 #define PRIORITY_LIM      10  
 #define PRIORITY_SCHEDULE 1
 
-#define PRIORITY_INVERSION 1
+#define PRIORITY_INVERSION 0
 #define BUSY_WAITING 0
 
 #define NULL 0
