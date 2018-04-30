@@ -18,13 +18,13 @@
 #define PRIORITY_LIM      10  
 #define PRIORITY_SCHEDULE 1
 
-#define PRIORITY_INVERSION 0
-#define BUSY_WAITING 0
+#define PRIORITY_INVERSION 1
+#define BUSY_WAITING 1
 
 #define NULL 0
 
 typedef struct thread thread_t, *thread_p;
-typedef struct mutex mutex_t, *mutex_p;
+typedef struct spinlock_s spinlock;
 
 struct thread {
   int        sp;                /* curent stack pointer */
@@ -35,6 +35,8 @@ struct thread {
   int counter;                  /* counter indicating number of misses the process undergoes */
   int recieved_priority[MAX_THREAD]; // 
   thread_p donating_thread[MAX_THREAD];
+  spinlock *donating_thread_waiting_lock[MAX_THREAD];
+
   };
 
 extern thread_t all_thread[MAX_THREAD];
@@ -49,7 +51,6 @@ struct spinlock_s {
   thread_p waiting_threads[MAX_THREAD];
 };
 
-typedef struct spinlock_s spinlock;
 
 
 extern void thread_switch(void);
