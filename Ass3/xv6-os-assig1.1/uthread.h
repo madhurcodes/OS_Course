@@ -21,6 +21,15 @@
 #define PRIORITY_INVERSION 1
 #define BUSY_WAITING 1
 
+#define TEST 0
+/*
+Test 0 - Test basic multithreading and thread switching
+Test 1 - Test locks and waiting
+Test 2 - Test starvation and aging
+Test 3 - Reproduce and solve Priority Inversion Problem
+Test 4 - Test Priority donation properly
+*/
+
 #define NULL 0
 
 typedef struct thread thread_t, *thread_p;

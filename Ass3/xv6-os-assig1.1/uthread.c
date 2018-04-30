@@ -543,11 +543,21 @@ main(int argc, char *argv[])
   else{
     lock_acquire = &lock_non_busy_wait_acquire;
   }
-  test = &test_part_one;
-  test = &test_part_two;
-  test = &test_starvation_and_aging;
-  test = &test_priority_inv_problem;
-  test = &test_priority_inv_problem_resolution;
+  if (TEST==0){
+    test = &test_part_one;
+  }
+  else if (TEST==1){
+    test = &test_part_two;
+  }
+  else if (TEST==2){
+    test = &test_starvation_and_aging;
+  }
+  else if (TEST==3){
+    test = &test_priority_inv_problem;
+  }
+  else if (TEST==4){
+    test = &test_priority_inv_problem_resolution;
+  }
 
   thread_init();
   (*test)();
