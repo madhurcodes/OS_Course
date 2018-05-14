@@ -19,9 +19,9 @@
 #define PRIORITY_SCHEDULE 1
 
 #define PRIORITY_INVERSION 1
-#define BUSY_WAITING 1
+#define BUSY_WAITING 0
 
-#define TEST 0
+#define TEST 4
 /*
 Test 0 - Test basic multithreading and thread switching
 Test 1 - Test locks and waiting

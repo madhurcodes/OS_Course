@@ -42,51 +42,52 @@ void lock_busy_wait_acquire(spinlock *lk){
 }
 
 void lock_non_busy_wait_acquire(spinlock *lk){
-  int pos=-1;
-  int i=0;
+  // int i=0;
+  // printf(2,"%s\n",current_thread->thr_name );
 
   while((lk->locked) && (lk->thr!=current_thread))
   {
+  	  int pos=-1;
       current_thread->state = WAITING;
-      if(pos==-1)
-      {
         for(int i=0;i<MAX_THREAD;i++)
         {
           if(lk->waiting_threads[i]==NULL)
           {
             pos=i;
-            break;
           }
-        }
+          if(lk->waiting_threads[i]==current_thread)
+          	pos=-1;
+
+      	}
+      	if(pos!=-1)
         lk->waiting_threads[pos]=current_thread;
-      }
 
       // Priority Donation for Busy Wait
-      int to_donate=current_thread->priority;
-      int can_receive=(PRIORITY_LIM)-(lk->thr)->priority;
-      int final_donation=0;
-      if(to_donate>can_receive){
-        final_donation=can_receive;
-      }
-      else{
-        final_donation=to_donate;
-      }
+      // int to_donate=current_thread->priority;
+      // int can_receive=(PRIORITY_LIM)-(lk->thr)->priority;
+      // int final_donation=0;
+      // if(to_donate>can_receive){
+      //   final_donation=can_receive;
+      // }
+      // else{
+      //   final_donation=to_donate;
+      // }
       
-      if(final_donation!=0)
-      {
-        current_thread->priority-=final_donation;
-        lk->thr->priority += final_donation;
-        for(i=0;i<MAX_THREAD;i++)
-        {
-          if(lk->thr->donating_thread[i]==NULL)
-          {
-            lk->thr->donating_thread[i]=current_thread;
-            lk->thr->recieved_priority[i]=final_donation;
-            lk->thr->donating_thread_waiting_lock[i] = lk;
-            break;
-          }
-        }
-      }
+      // if(final_donation!=0)
+      // {
+      //   current_thread->priority-=final_donation;
+      //   lk->thr->priority += final_donation;
+      //   for(i=0;i<MAX_THREAD;i++)
+      //   {
+      //     if(lk->thr->donating_thread[i]==NULL)
+      //     {
+      //       lk->thr->donating_thread[i]=current_thread;
+      //       lk->thr->recieved_priority[i]=final_donation;
+      //       lk->thr->donating_thread_waiting_lock[i] = lk;
+      //       break;
+      //     }
+      //   }
+      // }
 
 
       (*thread_schedule)();    
@@ -94,6 +95,7 @@ void lock_non_busy_wait_acquire(spinlock *lk){
 
 
   lk->locked = 1;
+  // printf(2,"%sI got Locked\n",current_thread->thr_name );
   for(int i=0;i<MAX_THREAD;i++)
   {
     if(lk->waiting_threads[i]==current_thread)
@@ -103,23 +105,23 @@ void lock_non_busy_wait_acquire(spinlock *lk){
 }
 
 void lock_non_busy_wait_acquire_donation(spinlock *lk){
-  int pos=-1;
   int i;
   while((lk->locked) && (lk->thr!=current_thread))
   {
+ 	 	  int pos=-1;
       current_thread->state = WAITING;
-      if(pos==-1)
-      {
-        for(i=0;i<MAX_THREAD;i++)
+        for(int i=0;i<MAX_THREAD;i++)
         {
           if(lk->waiting_threads[i]==NULL)
           {
             pos=i;
-            break;
           }
-        }
+          if(lk->waiting_threads[i]==current_thread)
+          	pos=-1;
+
+      	}
+      	if(pos!=-1)
         lk->waiting_threads[pos]=current_thread;
-      }
 
       int to_donate=current_thread->priority;
       int can_receive=(PRIORITY_LIM)-(lk->thr)->priority;
@@ -158,6 +160,8 @@ void lock_non_busy_wait_acquire_donation(spinlock *lk){
 
 void lock_release(spinlock *lk){
 
+	// printf(2,"%s\n",lk->thr->thr_name );
+
   if((lk->locked) && (lk->thr==current_thread)){
     lk->locked = 0;
     int i = 0;
@@ -165,6 +169,7 @@ void lock_release(spinlock *lk){
     {
       if(lk->waiting_threads[i]==NULL)
         continue;
+      // printf(2,"%sRunnable Made\n", lk->waiting_threads[i]->thr_name);
       (lk->waiting_threads[i])->state=RUNNABLE;
       lk->waiting_threads[i]=NULL;
     }
@@ -172,6 +177,7 @@ void lock_release(spinlock *lk){
     for(i = 0;i<MAX_THREAD;i++){
       int p = 0;
       if((current_thread->donating_thread[i] != NULL) && (lk->thr->donating_thread_waiting_lock[i] == lk)){
+      	// printf(2,"%sDoes not matter\n");
         p = current_thread->recieved_priority[i];
         current_thread->priority -= p;
         current_thread->donating_thread[i]->priority += p; 
@@ -210,6 +216,15 @@ thread_schedule_normal(void)
 {
   thread_p t;
   /* Find another runnable thread. */
+
+  // for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
+  // 	printf(2,"%s %d\n",t->thr_name,t->priority);
+  //   if (t->state == RUNNABLE && t != current_thread) {
+  //     next_thread = t;
+  //     break;
+  //   }
+  // }
+
 
   for (t = all_thread; t < all_thread + MAX_THREAD; t++) {
     if (t->state == RUNNABLE && t != current_thread) {
@@ -421,8 +436,8 @@ static void
 test_part_two(void){
   init_lock(&myl,"l11");
   thread_create("fff",test_part_two_internals,1);
-  thread_create("fun",test_part_two_internals,1);
-  thread_create("donk",test_part_two_internals,10);  
+  thread_create("fun",test_part_two_internals,2);
+  thread_create("donk",test_part_two_internals,3);  
   (*thread_schedule)();
 }
 
